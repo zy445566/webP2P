@@ -1,5 +1,5 @@
 <template>
-  <div class="take-shot">
+  <div class="basic-peer">
     <h1>基本的点对点传输</h1>
     <section>
       <form id="fileInfo">
@@ -28,7 +28,7 @@
 
 <script>
 export default {
-  name: 'take-shot',
+  name: 'basic-peer',
   data () {
     return {
       localConnection:null,
@@ -64,7 +64,6 @@ export default {
     handleFileInputChange:function () {
       var file = fileInput.files[0];
       if (!file) {
-        console.trace('No file chosen');
       } else {
         this.createConnection();
       }
@@ -74,14 +73,11 @@ export default {
       this.pcConstraint = null;
 
       // Add localConnection to global scope to make it visible
-      // from the browser console.
       window.localConnection = this.localConnection = new RTCPeerConnection(servers,
           this.pcConstraint);
-      console.trace('Created local peer connection object localConnection');
 
       this.sendChannel = this.localConnection.createDataChannel('sendDataChannel');
       this.sendChannel.binaryType = 'arraybuffer';
-      console.trace('Created send data channel');
 
       this.sendChannel.onopen = this.onSendChannelStateChange;
       this.sendChannel.onclose = this.onSendChannelStateChange;
@@ -94,10 +90,8 @@ export default {
         this.onCreateSessionDescriptionError
       );
       // Add remoteConnection to global scope to make it visible
-      // from the browser console.
       window.remoteConnection = this.remoteConnection = new RTCPeerConnection(servers,
           this.pcConstraint);
-      console.trace('Created remote peer connection object this.remoteConnection');
 
       this.remoteConnection.onicecandidate = (e) => {
         this.onIceCandidate(this.remoteConnection, e);
@@ -106,62 +100,53 @@ export default {
       this.fileInput.disabled = true;
     },
     onCreateSessionDescriptionError:function (error) {
-      console.trace('Failed to create session description: ' + error.toString());
     },
     sendData:function () {
+      
       var file = this.fileInput.files[0];
-      console.trace('File is ' + [file.name, file.size, file.type,
-          file.lastModifiedDate
-      ].join(' '));
-
       // Handle 0 size files.
       this.statusMessage.textContent = '';
       this.downloadAnchor.textContent = '';
       if (file.size === 0) {
         this.bitrateDiv.innerHTML = '';
         this.statusMessage.textContent = 'File is empty, please select a non-empty file';
-        closeDataChannels();
+        this.closeDataChannels();
         return;
       }
       this.sendProgress.max = file.size;
       this.receiveProgress.max = file.size;
       var chunkSize = 16384;
-      var sliceFile = function(offset) {
-        var reader = new window.FileReader();
-        reader.onload = (function() {
-          return function(e) {
-            this.sendChannel.send(e.target.result);
-            if (file.size > offset + e.target.result.byteLength) {
-              window.setTimeout(sliceFile, 0, offset + chunkSize);
-            }
-            sendProgress.value = offset + e.target.result.byteLength;
-          };
-        })(file);
+      var sliceFile = (offset) => {
+      var reader = new window.FileReader();
+      reader.onload = (()=> {
+        return (e)=> {
+          this.sendChannel.send(e.target.result);
+          if (file.size > offset + e.target.result.byteLength) {
+            window.setTimeout(sliceFile, 0, offset + chunkSize);
+          }
+          this.sendProgress.value = offset + e.target.result.byteLength;
+        };
+      })(file);
         var slice = file.slice(offset, offset + chunkSize);
         reader.readAsArrayBuffer(slice);
       };
       sliceFile(0);
     },
     closeDataChannels:function () {
-      console.trace('Closing data channels');
       this.sendChannel.close();
-      console.trace('Closed data channel with label: ' + sendChannel.label);
-      if (receiveChannel) {
+      if (this.receiveChannel) {
         this.receiveChannel.close();
-        console.trace('Closed data channel with label: ' + receiveChannel.label);
       }
       this.localConnection.close();
       this.remoteConnection.close();
       this.localConnection = null;
       this.remoteConnection = null;
-      console.trace('Closed peer connections');
 
       // re-enable the file select
       this.fileInput.disabled = false;
     },
     gotDescription1:function (desc) {
       this.localConnection.setLocalDescription(desc);
-      console.trace('Offer from localConnection \n' + desc.sdp);
       this.remoteConnection.setRemoteDescription(desc);
       this.remoteConnection.createAnswer().then(
         this.gotDescription2,
@@ -170,7 +155,6 @@ export default {
     },
     gotDescription2:function (desc) {
       this.remoteConnection.setLocalDescription(desc);
-      console.trace('Answer from remoteConnection \n' + desc.sdp);
       this.localConnection.setRemoteDescription(desc);
     },
     getOtherPc:function (pc) {
@@ -190,17 +174,15 @@ export default {
           this.onAddIceCandidateError(pc, err);
         }
       );
-      console.trace(this.getName(pc) + ' ICE candidate: \n' + (event.candidate ?
-          event.candidate.candidate : '(null)'));
     },
     onAddIceCandidateSuccess:function () {
-      console.trace('AddIceCandidate success.');
+
     },
     onAddIceCandidateError:function (error) {
-      console.trace('Failed to add Ice Candidate: ' + error.toString());
+
     },
     receiveChannelCallback:function (event) {
-      console.trace('Receive Channel Callback');
+
       this.receiveChannel = event.channel;
       this.receiveChannel.binaryType = 'arraybuffer';
       this.receiveChannel.onmessage = this.onReceiveMessageCallback;
@@ -217,7 +199,6 @@ export default {
       }
     },
     onReceiveMessageCallback:function (event) {
-      // console.trace('Received Message ' + event.data.byteLength);
       this.receiveBuffer.push(event.data);
       this.receivedSize += event.data.byteLength;
 
@@ -239,26 +220,42 @@ export default {
         var bitrate = Math.round(this.receivedSize * 8 /
             ((new Date()).getTime() - this.timestampStart));
         this.bitrateDiv.innerHTML = '<strong>Average Bitrate:</strong> ' +
-            bitrate + ' kbits/sec (max: ' + bitrateMax + ' kbits/sec)';
+            bitrate + ' kbits/sec (max: ' + this.bitrateMax + ' kbits/sec)';
 
         if (this.statsInterval) {
           window.clearInterval(this.statsInterval);
           this.statsInterval = null;
         }
 
-        closeDataChannels();
+        this.closeDataChannels();
       }
     },
     onSendChannelStateChange:function () {
       var readyState = this.sendChannel.readyState;
-      console.trace('Send channel state is: ' + readyState);
       if (readyState === 'open') {
-        sendData();
+        this.sendData();
       }
+    },
+    myBrowser:function (){
+      var userAgent = navigator.userAgent;
+      if (userAgent.indexOf("Opera")>-1) {
+          return "opera"
+      };
+      if (userAgent.indexOf("Firefox") > -1) {
+          return "firefox";
+      };
+      if (userAgent.indexOf("Chrome") > -1){
+        return "chrome";
+      };
+      if (userAgent.indexOf("Safari") > -1) {
+          return "safari";
+      };
+      if (userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1 && !isOpera) {
+          return "ie";
+      };
     },
     onReceiveChannelStateChange:function () {
       var readyState = this.receiveChannel.readyState;
-      console.trace('Receive channel state is: ' + readyState);
       if (readyState === 'open') {
         this.timestampStart = (new Date()).getTime();
         this.timestampPrev = this.timestampStart;
@@ -274,7 +271,7 @@ export default {
       };
 
       if (this.remoteConnection && this.remoteConnection.iceConnectionState === 'connected') {
-        if (adapter.browserDetails.browser === 'chrome') {
+        if (this.myBrowser() === 'chrome') {
           // TODO: once https://code.google.com/p/webrtc/issues/detail?id=4321
           // lands those stats should be preferrred over the connection stats.
           this.remoteConnection.getStats(null, function(stats) {
