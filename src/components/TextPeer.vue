@@ -19,8 +19,6 @@
         </div>
       </div>
     </section>
-
-    
   </div>
 </template>
 
@@ -81,9 +79,9 @@ export default {
         this.onIceCandidate(this.remoteConnection, e);
       };
       this.remoteConnection.ondatachannel = this.receiveChannelCallback;
-        this.localConnection.createOffer().then(
-        this.gotDescription1,
-        this.onCreateSessionDescriptionError
+      this.localConnection.createOffer().then(
+      this.gotDescription1,
+      this.onCreateSessionDescriptionError
       );
       this.startButton.disabled = true;
       this.closeButton.disabled = false;
