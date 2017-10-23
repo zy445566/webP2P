@@ -6,18 +6,24 @@ import TakeShot from '@/components/TakeShot'
 import BasicPeer from '@/components/BasicPeer'
 import DataPeer from '@/components/DataPeer'
 import TextPeer from '@/components/TextPeer'
+import SocketPeer from '@/components/SocketPeer'
 
 Vue.use(Router)
 
 export default new Router({
   routes: [
     {
+      path: '/',
+      name: 'SocketPeer',
+      component: SocketPeer
+    },
+    {
       path: '/data-peer',
       name: 'DataPeer',
       component: DataPeer
     },
     {
-      path: '/',
+      path: '/text-peer',
       name: 'TextPeer',
       component: TextPeer
     },

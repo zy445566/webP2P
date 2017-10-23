@@ -5,10 +5,23 @@ import App from './App'
 import router from './router'
 import 'element-ui/lib/theme-default/index.css'
 import ElementUI from 'element-ui'
-import WebrtcAdapter from 'webrtc-adapter'
+// import WebrtcAdapter from 'webrtc-adapter'
+import socketClient from 'socket.io-client'
+import Socketiop2p from 'socket.io-p2p'
 
 Vue.use(ElementUI)
-Vue.use(WebrtcAdapter)
+// Vue.use(WebrtcAdapter)
+
+Vue.use({
+  install:function(Vue){
+    Vue.mixin({
+      created(){
+        this.io = socketClient;
+        this.Socketiop2p = Socketiop2p;
+      }
+    });
+  }
+});
 
 Vue.config.productionTip = false
 
